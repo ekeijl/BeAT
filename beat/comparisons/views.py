@@ -15,31 +15,68 @@ from benchmarks.ajax_execute import BenchmarkJSON
 
 # MatPlotLib
 import numpy as np
+from matplotlib.colors import ColorConverter
 
-def benchFind(b, ovs):
+def benchFind(benchmarks, ovs):
 	"""
-	Finds the benchmarks from b with the optionvalues as specified in ovs
-	@param b Benchmark object
+	Finds the benchmarks with the optionvalues as specified in ovs
+	@param benchmarks Benchmark object
 	@param ovs A list of OptionValue ids.
 	"""
 	
 	res = []
-	for benchmark in b:
-		opts = [o.id for o in benchmark.optionvalue.all()]
-		if (set(opts) == set(ovs)):
-			res.append(benchmark)
+	for b in benchmarks:
+		opts = [o.id for o in b.optionvalue.all()]
+		if (set(ovs).issubset(set(opts))):
+		#if(set(ovs) == set(opts)):
+			res.append(b)
 	return res
 
-def printlabel(at, ov):
+def printLabel(at, ov):
 	"""
 	Method to produce a label for the axes of a graph, print the used AlgorithmTool and all OptionValues.
 	@param at AlgorithmTool object
 	@param ov OptionValue objects
 	"""
-	
-	return str(at) + ' ' + str(','.join([str(o) for o in ov.all()]))
+	return str(at) + ' ' + printOptions(ov, False)
 
-@cache_page(60 * 15)
+def printOptions(ov, verbose=True):
+	if ov.exists():
+		return str(','.join([str(o) for o in ov.all()]))
+	elif verbose:
+		return 'No options selected'
+	else:
+		return ''
+
+		
+def colorMask(v1,v2):
+	cc=ColorConverter()
+	mask = []
+	for i in range(len(v1)):
+		if  v1[i] == v2[i]:
+			mask.append(cc.to_rgb('black'))
+		elif v1[i] < v2[i]:
+			mask.append(cc.to_rgb('red'))
+		else:
+			mask.append(cc.to_rgb('blue'))
+	return mask
+
+def averageModels(benchmarks):
+	models = set([b.model.pk for b in benchmarks])
+	tAvg = []
+	mAvg = []
+	for m in models:
+		tmp = [b for b in benchmarks if b.model.pk == m]
+		
+		if tmp:
+			x = [(float(b.total_time)) for b in tmp]
+			tAvg.append(float(sum(x))/len(x))
+			y = [(float(b.memory_VSIZE)) for b in tmp]
+			mAvg.append(float(sum(y))/len(y))
+	
+	return tAvg,mAvg
+
+#@cache_page(60 * 15)
 def scatterplot(request, id, format='png'):
 	"""
 	Produces a scatterplot from a set of benchmarks.
@@ -53,19 +90,20 @@ def scatterplot(request, id, format='png'):
 	from matplotlib.figure import Figure
 	
 	# Colorconverter to make red and blue dots in the plot
-	from matplotlib.colors import ColorConverter
-	cc=ColorConverter()
 
 	import math
-	fig=Figure(facecolor='w')
-	
-	# Make a subplot for the Total Time data of a benchmark set
-	ax=fig.add_subplot(211)
-	
+	fig=Figure(facecolor='w', figsize=(7.5,15))
+		
 	# Fetch two benchmarks sets from DB
 	c = get_object_or_404(Comparison,id=id)
+	
+	# Fetch the AlgorithmTools
 	at_a = c.algorithm_tool_a
 	at_b = c.algorithm_tool_b
+	
+	# Fetch the OptionValues - note: use ov_a.all() to get the set of OptionValue objects!
+	ov_a = c.optionvalue_a
+	ov_b = c.optionvalue_b
 	
 	# First filter AlgorithmTool
 	b1 = Benchmark.objects.filter(algorithm_tool=at_a)
@@ -76,65 +114,45 @@ def scatterplot(request, id, format='png'):
 	b2 = b2.filter(model__in=[b.model.pk for b in b1])
 	
 	# Filter the selected options from Benchmark sets.
-	b1 = benchFind(b1,[o.id for o in c.optionvalue_a.all()])
-	b2 = benchFind(b2,[o.id for o in c.optionvalue_b.all()])
+	b1 = benchFind(b1,[o.id for o in ov_a.all()])
+	b2 = benchFind(b2,[o.id for o in ov_b.all()])
 	
-	# Calculate the average values for Models that are double in the set.
-	model_list = []
-	for b in b2:
-		if not b.model.pk in model_list:
-			model_list.append(b.model.pk)
-	t1avg = []
-	t2avg = []
-	m1avg = []
-	m2avg = []
-	for model in model_list:
-		tmp1 = []
-		for bench in b1:
-			if bench.model.pk == model:
-				tmp1.append(bench)
-		tmp2 = []
-		for bench in b2:
-			if bench.model.pk == model:
-				tmp2.append(bench)
-		if tmp1 and tmp2:
-			x=[(float(b.total_time)) for b in tmp1]
-			t1avg.append(float(sum(x))/len(x))
-			x=[(float(b.total_time)) for b in tmp2]
-			t2avg.append(float(sum(x))/len(x))
-			x=[(float(b.memory_VSIZE)) for b in tmp1]
-			m1avg.append(float(sum(x))/len(x))
-			x=[(float(b.memory_VSIZE)) for b in tmp2]
-			m2avg.append(float(sum(x))/len(x))
+	# Calculate the average values for Models that are double in the set.	
+	t1avg, m1avg = averageModels(b1)
+	t2avg, m2avg = averageModels(b2)
 
 	# Check for empty set
 	if len(t1avg) != 0:
+		
+		# Make a subplot for the Total Time data of a benchmark set
+		ax=fig.add_subplot(211)
 		
 		# Use the averages, in case any doubles occur
 		t1 = t1avg
 		t2 = t2avg
 		
 		# Color mask: if t[1] < t[2] --> red dot in graph; else blue dot
-		mask = []
-		for index in range(len(t1)):
-			if t1[index] < t2[index]:
-				mask.append(cc.to_rgb('red'))
-			else:
-				mask.append(cc.to_rgb('blue'))
+		t_mask = colorMask(t1,t2)
 		
-		# Draw a linear function from .001 until the first power of 10 greater than max_value
+		# Draw a linear function from 1 until the first power of 10 greater than max_value
 		max_value_t = max(max(t1avg),max(t2avg))
 		max_value_t = math.pow(10,math.ceil(math.log10(max_value_t)))
-		ax.plot(np.arange(0,max_value_t,step=.001),np.arange(0,max_value_t,step=.001),'k-')
+		ax.plot([1,max_value_t], [1,max_value_t],'k-')
 		
 		# Plot data
-		ax.scatter(t1, t2, s=10, color=mask, marker='o')
+		ax.scatter(t1, t2, s=10, color=t_mask, marker='o')
 		
 		# Axes mark-up
 		ax.set_xscale('log')
 		ax.set_yscale('log')
-		ax.set_xlabel(printlabel(at_a,c.optionvalue_a), color='red')
-		ax.set_ylabel(printlabel(at_b,c.optionvalue_b), color='blue')
+		
+		if(at_a == at_b):
+			fig.suptitle(at_a)
+			ax.set_xlabel(printOptions(ov_a), color='red')
+			ax.set_ylabel(printOptions(ov_b), color='blue')
+		else:
+			ax.set_xlabel(printLabel(at_a, ov_a), color='red')
+			ax.set_ylabel(printLabel(at_b, ov_b), color='blue')
 		ax.set_title('Runtime (s)', size='small')
 		ax.grid(True)
 			
@@ -146,39 +164,34 @@ def scatterplot(request, id, format='png'):
 		m2 = m2avg
 		
 		# Color mask again
-		mask = []
-		for index in range(len(t1)):
-			if m1[index] < m2[index]:
-				mask.append(cc.to_rgb('blue'))
-			else:
-				mask.append(cc.to_rgb('red'))
+		m_mask = colorMask(m1,m2)
 		
 		# Plot linear function again
 		max_value_m = max(max(m1),max(m2))
 		max_value_m = math.pow(10,math.ceil(math.log10(max_value_m)))
-		ax.plot(np.arange(0,max_value_m),np.arange(0,max_value_m),'k-')
+		ax.plot([1,max_value_m], [1,max_value_m],'k-')
 		
 		# Axes mark-up
 		ax.set_xscale('log')
 		ax.set_yscale('log')
-		ax.set_xlabel(printlabel(at_a,c.optionvalue_a), color='red')
-		ax.set_ylabel(printlabel(at_b,c.optionvalue_b), color='blue')
+		if(at_a == at_b):
+			ax.set_xlabel(printOptions(ov_a), color='red')
+			ax.set_ylabel(printOptions(ov_b), color='blue')
+		else:
+			ax.set_xlabel(printLabel(at_a, ov_a), color='red')
+			ax.set_ylabel(printLabel(at_b, ov_b), color='blue')
+			
 		ax.grid(True)
 		
 		# Plot data
-		ax.scatter(m1,m2,s=10,color=mask,marker='o')
+		ax.scatter(m1,m2,s=10,color=m_mask,marker='o')
 		ax.set_title('Memory VSIZE (kb)', size='small')
 	# Result set is empty
 	else: 
-		ax=fig.add_subplot(211)
-		ax.set_title('Runtime (s)', size='small')
-		ax.text(0.3,0.5,"Empty result set.") 
-		ax=fig.add_subplot(212)
-		ax.set_title('Memory VSIZE (kb)', size='small')
-		ax.text(0.3,0.5,"Empty result set.")
+		fig.suptitle('Empty result set.')
+		fig.set_size_inches(7.5,0.5)
 	
 	# Output graph
-	fig.set_size_inches(5,10)
 	canvas = FigureCanvas(fig)
 	response = graph.export(canvas, c.name, format)
 	return response
@@ -376,18 +389,12 @@ def compare_detail(request, id, model=False):
 		# Filter on OptionValues.
 		b1 = benchFind(b1,[o.id for o in c.optionvalue_a.all()])
 		b2 = benchFind(b2,[o.id for o in c.optionvalue_b.all()])
-
-		# Model should be consistent for b1 and b2, so doesn't matter which you pick.
+		
+		# Get time and memory values from Benchmark sets.		
+		t1, m1 = averageModels(b1)
+		t2, m2 = averageModels(b2)
+		
 		model = [b.model.name for b in b1]
-		
-		# Get memory values from Benchmark sets.
-		m1 = [b.memory_VSIZE for b in b1]
-		m2 = [b.memory_VSIZE for b in b2]
-		
-		# Make new arrays with only the elapsed time
-		t1 = [(float(b.total_time)) for b in b1]
-		t2 = [(float(b.total_time)) for b in b2]
-		
 		list = zip(model,t1,t2,m1,m2)
 		
 		#less then cute.

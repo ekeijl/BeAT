@@ -19,6 +19,7 @@
 			<ul>
 				<li><b>Tool:</b> {{ comparison.algorithm_tool_a.tool }}</li>
 				<li><b>Algorithm:</b> {{ comparison.algorithm_tool_a.algorithm }}</li>
+				<li><b>Version:</b> {{ comparison.algorithm_tool_a.version }}</li>
 				<li><b>Options:</b> <ul>{% for c in comparison.optionvalue_a.all %}
 						<li>{{ c }}</li>
 					{% empty %}
@@ -32,6 +33,7 @@
 			<ul>
 				<li><b>Tool:</b> {{ comparison.algorithm_tool_b.tool }}</li>
 				<li><b>Algorithm:</b> {{ comparison.algorithm_tool_b.algorithm }}</li>
+				<li><b>Version:</b> {{ comparison.algorithm_tool_b.version }}</li>
 				<li><b>Options:</b> 
 					<ul>{% for c in comparison.optionvalue_b.all %}
 						<li>{{ c }}</li>
