@@ -1,6 +1,7 @@
 from beat.benchmarks.models import *
 from beat.comparisons.models import *
 from django.contrib import admin
+from django import forms
 
 class HardwareInline(admin.TabularInline):
 	model = BenchmarkHardware
@@ -13,7 +14,11 @@ class OptionValueInline(admin.TabularInline):
 class AlgorithmToolInline(admin.TabularInline):
 	model = AlgorithmTool
 	extra = 1
-	
+
+class RegexAdmin(admin.ModelAdmin):
+	search_fields = ['regex']
+	list_display = ('pk', 'regex')
+
 class BenchmarkAdmin(admin.ModelAdmin):
 	list_display = ('model', 'algorithm_tool', 'date_time', 'finished', 'user_time', 'system_time', 'total_time', 'elapsed_time', 'memory_VSIZE', 'memory_RSS', 'states_count', 'transition_count')
 	list_filter = ['date_time']
@@ -29,16 +34,23 @@ class ValidOptionInline(admin.TabularInline):
 	model = ValidOption
 	extra = 1
 
+class RegexForm(forms.ModelForm):
+	regex = forms.ModelChoiceField(queryset=Regex.objects.order_by('regex'))
+	
+	class Meta:
+		model = Regex
+
 class AlgorithmToolAdmin(admin.ModelAdmin):
 	inlines=[
-		ValidOptionInline,
+		ValidOptionInline
 	]
+	form = RegexForm
 	
 admin.site.register(Model)
 #admin.site.register(Tool, ToolAdmin)
 admin.site.register(Tool)
 #admin.site.register(Tool)
-admin.site.register(Regex)
+admin.site.register(Regex, RegexAdmin)
 admin.site.register(Hardware)
 admin.site.register(Option)
 admin.site.register(Benchmark, BenchmarkAdmin)

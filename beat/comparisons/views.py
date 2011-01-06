@@ -15,7 +15,10 @@ from benchmarks.ajax_execute import BenchmarkJSON
 
 # MatPlotLib
 import numpy as np
-from matplotlib.colors import ColorConverter
+import datetime
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.figure import Figure
 
 def benchFind(benchmarks, ovs):
 	"""
@@ -48,18 +51,6 @@ def printOptions(ov, verbose=True):
 	else:
 		return ''
 
-		
-def colorMask(v1,v2):
-	cc=ColorConverter()
-	mask = []
-	for i in range(len(v1)):
-		if  v1[i] == v2[i]:
-			mask.append(cc.to_rgb('black'))
-		elif v1[i] < v2[i]:
-			mask.append(cc.to_rgb('red'))
-		else:
-			mask.append(cc.to_rgb('blue'))
-	return mask
 
 def averageModels(benchmarks):
 	models = set([b.model.pk for b in benchmarks])
@@ -84,16 +75,7 @@ def scatterplot(request, id, format='png'):
 	@param id The identifier of the Comparison object.
 	@param format The export format for the graph, png is default. Choices: ['png','pdf','ps','eps','svg']
 	""" 
-	
-	# General library stuff
-	from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-	from matplotlib.figure import Figure
-	
-	# Colorconverter to make red and blue dots in the plot
-
-	import math
-	fig=Figure(facecolor='w', figsize=(7.5,15))
-		
+			
 	# Fetch two benchmarks sets from DB
 	c = get_object_or_404(Comparison,id=id)
 	
@@ -120,82 +102,46 @@ def scatterplot(request, id, format='png'):
 	# Calculate the average values for Models that are double in the set.	
 	t1avg, m1avg = averageModels(b1)
 	t2avg, m2avg = averageModels(b2)
+	
+	xName = ''
+	yName = ''
+	title = ''
+	
+	if(at_a == at_b):
+			title = str(at_a)
+			xName = printOptions(ov_a)
+			yName = printOptions(ov_b)
+	else:
+			xName = printLabel(at_a, ov_a)
+			yName = printLabel(at_b, ov_b)
+		
+	if format == 'multi-pdf':
+		response = HttpResponse(content_type='application/pdf')
+		pdf = PdfPages(response)
 
-	# Check for empty set
-	if len(t1avg) != 0:
+		fig = graph.makeScatter([(t1avg,t2avg)], ['Runtime (s)'], title, xName, yName)
+		canvas = FigureCanvas(fig)
+		pdf.savefig(figure=canvas.figure)
 		
-		# Make a subplot for the Total Time data of a benchmark set
-		ax=fig.add_subplot(211)
+		fig2 = graph.makeScatter([(m1avg,m2avg)], ['Memory VSIZE (kb)'], title, xName, yName)
+		canvas = FigureCanvas(fig2)
+		pdf.savefig(figure=canvas.figure)
 		
-		# Use the averages, in case any doubles occur
-		t1 = t1avg
-		t2 = t2avg
+		d = pdf.infodict()
+		d['Title'] = title or 'BeAT Comparison'
+		d['Author'] = str(request.user)
+		d['Subject'] = 'How to create a multipage pdf file and set its metadata'
+		d['Keywords'] = 'BeAT'
+		d['CreationDate'] = datetime.datetime.now()
+		d['ModDate'] = datetime.datetime.today()
 		
-		# Color mask: if t[1] < t[2] --> red dot in graph; else blue dot
-		t_mask = colorMask(t1,t2)
-		
-		# Draw a linear function from 1 until the first power of 10 greater than max_value
-		max_value_t = max(max(t1avg),max(t2avg))
-		max_value_t = math.pow(10,math.ceil(math.log10(max_value_t)))
-		ax.plot([1,max_value_t], [1,max_value_t],'k-')
-		
-		# Plot data
-		ax.scatter(t1, t2, s=10, color=t_mask, marker='o')
-		
-		# Axes mark-up
-		ax.set_xscale('log')
-		ax.set_yscale('log')
-		
-		if(at_a == at_b):
-			fig.suptitle(at_a)
-			ax.set_xlabel(printOptions(ov_a), color='red')
-			ax.set_ylabel(printOptions(ov_b), color='blue')
-		else:
-			ax.set_xlabel(printLabel(at_a, ov_a), color='red')
-			ax.set_ylabel(printLabel(at_b, ov_b), color='blue')
-		ax.set_title('Runtime (s)', size='small')
-		ax.grid(True)
-			
-		# -------- Plotting memory data starts here in a new subplot ---------
-		ax=fig.add_subplot(212)
-		
-		# Average memory values.
-		m1 = m1avg
-		m2 = m2avg
-		
-		# Color mask again
-		m_mask = colorMask(m1,m2)
-		
-		# Plot linear function again
-		max_value_m = max(max(m1),max(m2))
-		max_value_m = math.pow(10,math.ceil(math.log10(max_value_m)))
-		ax.plot([1,max_value_m], [1,max_value_m],'k-')
-		
-		# Axes mark-up
-		ax.set_xscale('log')
-		ax.set_yscale('log')
-		if(at_a == at_b):
-			ax.set_xlabel(printOptions(ov_a), color='red')
-			ax.set_ylabel(printOptions(ov_b), color='blue')
-		else:
-			ax.set_xlabel(printLabel(at_a, ov_a), color='red')
-			ax.set_ylabel(printLabel(at_b, ov_b), color='blue')
-			
-		ax.grid(True)
-		
-		# Plot data
-		ax.scatter(m1,m2,s=10,color=m_mask,marker='o')
-		ax.set_title('Memory VSIZE (kb)', size='small')
-	# Result set is empty
-	else: 
-		fig.suptitle('Empty result set.')
-		fig.set_size_inches(7.5,0.5)
-	
-	# Output graph
-	canvas = FigureCanvas(fig)
-	response = graph.export(canvas, c.name, format)
+		pdf.close()
+		response['Content-Disposition'] = 'attachment; filename=multipage_pdf.pdf'
+	else:
+		fig = graph.makeScatter([(t1avg,t2avg), (m1avg,m2avg)],['Runtime(s)', 'Memory VSIZE (kb)'], title, xName, yName)
+		canvas = FigureCanvas(fig)
+		response = graph.export(canvas,c.name,format)
 	return response
-	
 
 @cache_page(60 * 15)
 def graph_model(request, id, format='png'):

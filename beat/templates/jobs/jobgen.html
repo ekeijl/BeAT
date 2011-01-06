@@ -15,4 +15,28 @@
 			</table>
 		<input type="submit" value="Submit" />
 		</form>
+		
+		{% if benchmarks %}
+		<h2 class="benchmarktitle">Benchmark Table</h2>
+		
+		<table class="benchmarks">
+			<tr>
+				<th id="modelsort" class="sort">Model</th>
+				<th id="statessort" class="sort">States</th>
+				<th id="runtimesort" class="sort">Runtime</th>
+				<th id="memorysort" class="sort">Memory (RSS)</th>
+				<th id="finishedsort" class="sort">Finished</th>
+			</tr>
+			{% for b in benchmarks %}
+			<tr>
+				<td>{{ b.model }}</td>
+				<td>{{ b.states_count }}</td>
+				<td>{{ b.total_time }}</td>
+				<td>{{ b.memory_RSS }}</td>
+				<td>{{ b.finished|yesno }}</td>
+			</tr>
+			{% endfor %}
+		</table>
+		
+		{% endif %}
 {% endblock %}

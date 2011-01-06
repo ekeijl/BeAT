@@ -9,7 +9,8 @@ def test_regex(regex, sample_data):
 			return "Error: compilation failed"
 		match = compiled.match(sample_data)
 		if match:
-			return str(match.groupdict())
+			dict = match.groupdict()
+			return '\n'.join([(i + ': ' + dict[i]) for i in sorted(dict.iterkeys())])
 		else:
 			return "Error: no results"
 	except Exception as e:

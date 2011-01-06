@@ -20,7 +20,10 @@ def jobgen_load(request,id):
 			}
 	jobform = JobGenForm(data)
 	suiteform = SuiteGenForm()
-	return render_to_response('jobs/jobgen.html', {'jform':jobform, 'sform':suiteform}, context_instance=RequestContext(request))
+	at = get_object_or_404(AlgorithmTool, algorithm=jfilter.algorithm, tool=jfilter.tool, version = jfilter.gitversion)
+	benchmarks = Benchmark.objects.filter(model=jfilter.model, algorithm_tool=at)
+	
+	return render_to_response('jobs/jobgen.html', {'jform':jobform, 'sform':suiteform, 'benchmarks':benchmarks}, context_instance=RequestContext(request))
 
 """Page for batch job generation
 """

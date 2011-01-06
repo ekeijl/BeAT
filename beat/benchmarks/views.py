@@ -8,6 +8,7 @@ from beat.comparisons.models import Comparison, ModelComparison
 from beat.tools import graph, export_csv, regex_tester
 from forms import *
 import json
+import beat.gitinterface as g
 
 #@login_required(redirect_field_name='next')
 def index(request):
@@ -98,7 +99,6 @@ It will take the reqest read out the form and attempt to put it in the database.
 def tool_upload(request):
 	import time
 	import sys
-	import beat.gitinterface as g
 	
 	#switch to and pull the repository
 	#this can later be extended to use a user-provided repository
@@ -167,3 +167,6 @@ def tool_upload(request):
 def test_regex(request):
 	dump = json.dumps({'result': regex_tester.test_regex(request.POST.get('regex'), request.POST.get('testlog'))})
 	return HttpResponse(dump,mimetype="application/json")
+
+def error500(request):
+	return render_to_response('500.html', context_instance=RequestContext(request))

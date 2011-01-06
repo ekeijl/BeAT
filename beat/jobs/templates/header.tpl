@@ -2,7 +2,7 @@ echo BEGIN OF HEADER
 
 echo Nodename: $(uname -n)
 echo Hardware-name: $(uname -m)
-echo OS: $(uname -o)\n
+echo OS: $(uname -s)\n
 echo Kernel-name: $(uname -s)
 echo Kernel-release: $(uname -r)
 echo Kernel-version: $(uname -v)

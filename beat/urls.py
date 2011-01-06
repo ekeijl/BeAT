@@ -5,6 +5,7 @@ import os
 # Uncomment the next two lines to enable the admin:
 from django.contrib import admin
 admin.autodiscover()
+handler500 = 'benchmarks.views.error500'
 
 urlpatterns = patterns('',
 	# Example:
@@ -49,8 +50,8 @@ urlpatterns = patterns('',
 )
 
 # static media: DEVELOPMENT ONLY!
-if settings.DEBUG:
-	urlpatterns += patterns('django.views.static',
+#if settings.DEBUG:
+urlpatterns += patterns('django.views.static',
 	(r'^site_media/(?P<path>.*)$', 
 		'serve', {
 		'document_root': os.path.join(settings.SITE_ROOT, 'site_media'),
