@@ -8,6 +8,7 @@ from beat.comparisons.models import Comparison, ModelComparison
 from beat.tools import graph, export_csv, regex_tester
 from forms import *
 import json
+import simplejson
 import beat.gitinterface as g
 
 #@login_required(redirect_field_name='next')
@@ -107,6 +108,7 @@ def tool_upload(request):
 	at = None
 	error = False
 	if request.method == 'POST':
+	
 		repository.pull_from_git("http://fmt.cs.utwente.nl/tools/scm/ltsmin.git")
 		form = ToolUploadForm(request.POST)
 		if form.is_valid():
@@ -153,16 +155,25 @@ def tool_upload(request):
 					op, created = Option.objects.get_or_create(name=option, takes_argument=takes_arg)
 					vo, created = ValidOption.objects.get_or_create(algorithm_tool=at, option=op, defaults={'regex':emptyregex})
 					rs, created = RegisteredShortcut.objects.get_or_create(algorithm_tool=at, option=op, shortcut=shortcut)
-				form = ToolUploadForm()
+					
+				return render_to_response('upload_tool_complete.html', {'id':at.id}, context_instance=RequestContext(request))
 			else:
-				form = ToolUploadForm(initial={'tool_name' : tool_name, 'algorithm_name' : algorithm_name, 'version_name' : version_name, 'expression' : expression, 'options' : options})
 				error="Could not find the provided version in the git."
+				form = ToolUploadForm(initial={'tool_name' : tool_name, 'algorithm_name' : algorithm_name, 'version_name' : version_name, 'expression' : expression, 'options' : options})
+		
 	else:
-		return render_to_response('upload_tool.html', {'form': ToolUploadForm()}, context_instance=RequestContext(request))
-	if error:
-		return render_to_response('upload_tool.html', {'form': form, 'error' : error}, context_instance=RequestContext(request))
-	else:
-		return render_to_response('upload_tool_complete.html', {'id':at.id}, context_instance=RequestContext(request))
+		form = ToolUploadForm()
+	return render_to_response('upload_tool.html', {'form': ToolUploadForm(), 'at': AlgorithmToolList(), 'error':error}, context_instance=RequestContext(request))
+	
+	#if error:
+	#	return render_to_response('upload_tool.html', {'form': form, 'error' : error}, context_instance=RequestContext(request))
+	#else:
+	#	return render_to_response('upload_tool_complete.html', {'id':at.id}, context_instance=RequestContext(request))
+
+def at_form(request):
+	at = AlgorithmTool.objects.get(pk=int(request.POST.get('at')))
+	dump = simplejson.dumps({'version':at.version, 'tool':at.tool.name, 'algorithm': at.algorithm.name, 'regex': at.regex.regex})
+	return HttpResponse(dump, mimetype='application/javascript')
 
 def test_regex(request):
 	dump = json.dumps({'result': regex_tester.test_regex(request.POST.get('regex'), request.POST.get('testlog'))})

@@ -27,6 +27,7 @@ urlpatterns = patterns('',
 	#Job Generation
 	#authorization should be here too
 	(r'^jobgen/$', 'jobs.views.jobgen'),
+	(r'^ajax_jobgen/$', 'jobs.views.ajax_jobgen'),
 	(r'^jobgen/go/$', 'jobs.views.jobgen_create'),
 	(r'^suitegen/go/$', 'jobs.views.suitegen_create'),
 	(r'^jobgen/(?P<id>[0-9]+)/$', 'jobs.views.jobgen_load'),
@@ -45,6 +46,7 @@ urlpatterns = patterns('',
 	# Overige pagina's
 	(r'^colophon/$', 'benchmarks.views.colophon'),
 	(r'^tool_upload/$', 'benchmarks.views.tool_upload'),
+	(r'^ajax_tool_upload/$', 'benchmarks.views.at_form'),
 	# Page to test a regular expression through AJAX
 	(r'^regextester/$','benchmarks.views.test_regex'),
 )

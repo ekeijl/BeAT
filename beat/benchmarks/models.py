@@ -121,7 +121,7 @@ class Regex(models.Model):
 	regex = models.TextField()
 
 	def __unicode__(self):
-		return self.regex.split('*')[0] #first ten characters; change to something more elegant later
+		return self.regex.split(':')[0] #first ten characters; change to something more elegant later
 
 	class Meta:
 		verbose_name_plural = "Regexes"

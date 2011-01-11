@@ -1,7 +1,7 @@
 from django import forms
 from django.forms import widgets
 from django.db.models import Count
-from beat.benchmarks.models import Benchmark
+from beat.benchmarks.models import Benchmark, AlgorithmTool
 
 class ExportForm(forms.Form):
 	benchmarks = forms.ModelMultipleChoiceField(Benchmark.objects.all(), required=False, widget=widgets.CheckboxSelectMultiple)
@@ -18,3 +18,5 @@ class ToolUploadForm(forms.Form):
 
 #class LogResponseForm(forms.Form):
 #	response = forms.CharField(widget=forms.Textarea)
+class AlgorithmToolList(forms.Form):
+	at = forms.ModelChoiceField(AlgorithmTool.objects.order_by('tool__name'), required=False, label='Copy existing tool',help_text='Select from this field to copy an instance')

@@ -4,6 +4,8 @@ from django.template import RequestContext
 from django.http import HttpResponse, HttpResponseForbidden
 from beat.benchmarks.models import *
 from beat.jobs.forms import *
+from django.core import serializers
+import simplejson
 
 @login_required
 def jobgen_load(request,id):
@@ -29,9 +31,10 @@ def jobgen_load(request,id):
 """
 @login_required
 def jobgen(request):
+	jobcopyform = JobGenCopyForm(request.user)
 	jobform = JobGenForm()
 	suiteform = SuiteGenForm()
-	return render_to_response('jobs/jobgen.html', {'jform':jobform, 'sform':suiteform}, context_instance=RequestContext(request))
+	return render_to_response('jobs/jobgen.html', {'jform':jobform, 'jcform':jobcopyform,'sform':suiteform}, context_instance=RequestContext(request))
 
 """Generate batch job
 """
@@ -129,4 +132,8 @@ def user_jobs(request):
 	jobs = (JobsFilter.objects.filter(user=request.user))
 	return render_to_response('jobs/user_jobs.html', { 'user_jobs' : jobs }, context_instance=RequestContext(request) )
 	
+def ajax_jobgen(request):
+	job = JobsFilter.objects.get(pk=int(request.POST.get('job')))
+	dump = simplejson.dumps({'name':job.name,'gitversion':job.gitversion,'nodes':job.nodes,'tool':job.tool.id,'algorithm':job.algorithm.id,'model':job.model.id,'options':job.options})
+	return HttpResponse(dump, mimetype='application/javascript')
 	

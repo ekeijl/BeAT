@@ -22,3 +22,11 @@ class JobGenForm(forms.Form):
 class SuiteGenForm(forms.Form):
 	versions	= forms.MultipleChoiceField( choices=ltsminversions(), required=True )
 	models		= forms.ModelMultipleChoiceField(Model.objects.order_by('name'), required=True)
+
+class JobGenCopyForm(forms.Form):
+	
+	list 		= forms.ModelChoiceField(JobsFilter.objects.all(), label='Copy from my jobs', help_text='Select from this field to copy an existing job', required=False)
+	
+	def __init__(self, user, *args, **kwargs):
+		super(JobGenCopyForm, self).__init__(*args, **kwargs)
+		self.fields['list'].queryset = JobsFilter.objects.filter(pk = user.id)
