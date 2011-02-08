@@ -10,8 +10,9 @@ def test_regex(regex, sample_data):
 		match = compiled.match(sample_data)
 		if match:
 			dict = match.groupdict()
-			return '\n'.join([(i + ': ' + dict[i]) for i in sorted(dict.iterkeys())])
+			res = '\n'.join([(i + ': ' + dict[i]) for i in sorted(dict.iterkeys())])
+			return res
 		else:
-			return "Error: no results"
+			return "Error: no match found"
 	except Exception as e:
 		return "Error: %s"%e

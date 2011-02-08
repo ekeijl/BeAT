@@ -62,7 +62,7 @@ function makeRequest(d){
 	previousRequest = str;
 	
 	$.ajax({
-		url: 			'ajax/benchmarks/',
+		url: 			'/benchmarks/ajax/benchmarks/',
 		type: 			'POST',
 		data: 			"data=" + str,
 		beforeSend: 	function(){

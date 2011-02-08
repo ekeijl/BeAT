@@ -6,6 +6,7 @@ urlpatterns = patterns('beat.comparisons.views',
 	# Form pages
 	(r'^tool/$', 'compare_scatterplot'),
 	(r'^model/$', 'compare_model'),
+	(r'^ajax_compare_tools/$', 'ajax_compare_tools'),
 	
 	# Show detail for a benchmark Comparison or ModelComparison, it takes the ID from the db
 	url(r'^tool/(?P<id>\d+)/$', 'compare_detail', name="detail_benchmark"),

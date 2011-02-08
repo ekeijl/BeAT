@@ -1,6 +1,6 @@
 var testing = false;
 
-function test(regex, log){
+function testregex(regex, log){
 	if (testing) return;
 	testing = true;
 	
@@ -32,6 +32,6 @@ function handleResponse(json){
 
 $(document).ready(function(){
 	$("#testregex").click(function(){
-		test($("#id_expression").val(),$("#id_test_log").val());
+		testregex($("#id_expression").val(),$("#id_test_log").val());
 	});
 });

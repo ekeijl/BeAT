@@ -25,7 +25,7 @@ class CompareScatterplotForm(forms.Form):
 	algo				= Algorithm.objects.order_by('name')
 	tool				= Tool.objects.order_by('name')
 	ov					= OptionValue.objects.order_by('option__name')
-	versions 			= [(v,v) for v in AlgorithmTool.objects.values_list('version',flat=True).distinct().order_by('version')]
+	versions 			= [('','---------')] + [(v,v) for v in AlgorithmTool.objects.values_list('version',flat=True).distinct().order_by('version')]
 	
 	name 				= forms.CharField(max_length=255, required=False, label="Name")
 	a_algo 				= forms.ModelChoiceField(algo, label="Algorithm", required=False)

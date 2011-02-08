@@ -2,11 +2,20 @@ from django.db import models
 from django.contrib.auth.models import User
 from beat.settings import *
 
+class ModelManager(models.Manager):
+	def get_by_natural_key(self, name):
+		return self.get(name=name)
+
 class Model(models.Model):
+	objects = ModelManager()
 	name = models.CharField(max_length=200)
 	
+	def natural_key(self):
+		return self.name
+
 	def __unicode__(self):
 		return self.name
+	
 
 class OptionValue(models.Model):
 	option = models.ForeignKey('Option')

@@ -57,12 +57,32 @@
 			<input type="submit" value="Submit" />
 		</form>
 
+		<hr />
+		
+		
+		<h2 class="benchmarktitle">Preview of result set <span id="ajaxLoad"></span></h2>
+		
+		<table class="benchmarks" id="resultBenchmarks">
+			<tr>
+			<th>Model</th>
+			<th>Runtime A (sec)</th>
+
+			<th>Runtime B (sec)</th>
+			<th>VSIZE A (KB)</th>
+			<th>VSIZE B (KB)</th>
+			</tr>
+
+		</table>
+		
+
 		<script type="text/javascript">
 		var target_url = "{% url comparisons.views.compare_scatterplot %}";
 		var defaulttext = $("option[selected=selected]").first().text();
 		
 		var b_algorithmtools = [];
 		var a_algorithmtools = [];
+		
+		var updating = false;
 		
 		
 		var val;
@@ -108,10 +128,80 @@
 			/* a_algorithmtools == self["a_algorithmtools"] */
 			if(foundField){
 				update_result_select($("#id_" + name[1] + "_algorithmtool"), self[name[1] + "_algorithmtools"], res);
+				(res);
+			}
+			
+			if($("#id_a_algorithmtool option:selected").val() != "" && $("#id_b_algorithmtool option:selected").val() != "") {
+				show_benchmarks();
 			}
 		}
-
+		
+		var testing = false;
+		
+		function resultset(){
+			if (testing) return;
+			testing = true;
+			
+			var data = {};
+			
+			$("#form_a select").each(function(){
+				//data = data + {$(this).attr('name'):$(this).next("option:selected").val()};
+				alert($(this).attr('name'));
+			});
+			
+			
+		}
+		
+		// FIX HERE
+		function show_benchmarks() {
+			if (updating) return;
+			
+			updating = true;
+			
+			at_a = $("#id_a_algorithmtool option:selected").val();
+			at_b = $("#id_b_algorithmtool option:selected").val();
+			
+			data = {at_a: at_a, at_b: at_b};
+			
+			$.ajax({
+				url: '/compare/ajax_compare_tools/',
+				type: 'POST',
+				data: data,
+				beforeSend: function(){
+								$("#ajaxLoad").append('<img src="/site_media/img/ajaxload.gif" />');
+							},
+				success: function(json){
+							updating = false;
+							$("#resultBenchmarks").html("<tr><th>Model</th><th>Runtime A (sec)</th><th>Runtime B (sec)</th><th>VSIZE A (KB)</th><th>VSIZE B (KB)</th></tr>");
+							if (json.length > 0) {
+								$.each(json, function(i, value) {
+									$("#resultBenchmarks").append("<tr><td>" 
+										+ value[0] + "</td><td>" 
+										+ roundNumber(value[1],2) + "</td><td>" 
+										+ roundNumber(value[2],2) + "</td><td>" 
+										+ roundNumber(value[3],2) + "</td><td>" 
+										+ roundNumber(value[4],2) + "</td></tr>");
+								});
+							} else {
+								$("#resultBenchmarks").append("<tr><td colspan=\"5\" style=\"text-align:center;\">No results</td></tr>");
+							}
+						},
+				error: function(XMLHttpRequest,textStatus,errorThrown){
+							updating = false;
+							alert("Error with getting result: "+textStatus);
+						},
+				complete: function(){
+							updating = false;
+							$("#ajaxLoad").html('');
+						},
+				dataType: 'json'
+			});
+			
+			
+		}
+		
 		function update_result_select(widget, algorithmtools, result){
+			
 			widget.empty();
 			$.each(algorithmtools, function(index, value){/* value.value en value.text */
 				var valid = true;
@@ -140,14 +230,26 @@
 			} else {
 				widget.attr("enabled", false);
 			}
+			
+
 		}		
+		
+		$("#id_a_algorithmtool").change(function() {
+			show_benchmarks();
+		});
+		
+		$("#id_b_algorithmtool").change(function() {
+			show_benchmarks();
+		});
 		
 				/* bind form handlers */
 		$(".form_a option").click(function(src){
-			benchmark_form_update('.form_a', src);			
+				benchmark_form_update('.form_a', src);
+			
 		});
 		$(".form_b option").click(function(src){
-			benchmark_form_update('.form_b', src);			
+				benchmark_form_update('.form_b', src);			
+			
 		});
 		
 		benchmark_form_update('.form_a', null);			

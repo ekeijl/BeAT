@@ -12,6 +12,7 @@ from django.core import serializers
 #json
 import json
 from benchmarks.ajax_execute import BenchmarkJSON
+from django.utils import simplejson
 
 # MatPlotLib
 import numpy as np
@@ -437,3 +438,77 @@ def compare_scatterplot(request):
 	return render_to_response('comparisons/compare_benchmarks_form.html', {
 		'form': form,
 	}, context_instance=RequestContext(request))
+	
+def ajax_compare_form(request):
+	at_a = c.algorithm_tool_a
+	at_b = c.algorithm_tool_b
+	
+	# Fetch the OptionValues - note: use ov_a.all() to get the set of OptionValue objects!
+	ov_a = c.optionvalue_a
+	ov_b = c.optionvalue_b
+	
+	# First filter AlgorithmTool
+	b1 = Benchmark.objects.filter(algorithm_tool=at_a)
+	b2 = Benchmark.objects.filter(algorithm_tool=at_b)
+	
+	# Only keep Benchmark that have overlapping Models.
+	b1 = b1.filter(model__in=[b.model.pk for b in b2])
+	b2 = b2.filter(model__in=[b.model.pk for b in b1])
+	
+	# Filter the selected options from Benchmark sets.
+	b1 = benchFind(b1,[o.id for o in ov_a.all()])
+	b2 = benchFind(b2,[o.id for o in ov_b.all()])
+
+	# FIX THIS:
+def ajax_compare_tools(request):
+	#ids_a = request.POST.getlist('at_a[]');
+	#at_a = []
+	#for id in ids_a:
+	#	if (id != ''):
+	#		at_a.append(id)	
+	at_a = request.POST.get('at_a')
+	at_b = request.POST.get('at_b')
+	#list = get_model_overlap(at_a, at_b)
+	
+	#ids_b = request.POST.getlist('at_b[]');
+	#at_b = []
+	#for id in ids_b:
+	#	if (id != ''):
+	#		at_b.append(id)	
+	
+	# Fetch the OptionValues - note: use ov_a.all() to get the set of OptionValue objects!
+	#ov_a = c.optionvalue_a
+	#ov_b = c.optionvalue_b
+	
+	# First filter AlgorithmTool
+	b1 = Benchmark.objects.filter(algorithm_tool=at_a)
+	b2 = Benchmark.objects.filter(algorithm_tool=at_b)
+	
+	# Only keep Benchmark that have overlapping Models.
+	b1 = b1.filter(model__in=[b.model.pk for b in b2])
+	b2 = b2.filter(model__in=[b.model.pk for b in b1])
+	
+	t1, m1 = averageModels(b1)
+	t2, m2 = averageModels(b2)
+	
+	model = [b.model.name for b in b1]
+	list = zip(model,t1,t2,m1,m2)
+	
+	# Filter the selected options from Benchmark sets.
+	#b1 = benchFind(b1,[o.id for o in ov_a.all()])
+	#b2 = benchFind(b2,[o.id for o in ov_b.all()])
+	
+	#benchmarks = Benchmark.objects.only('model__name', 'states_count', 'total_time', 'memory_RSS', 'finished')
+	#benchmarks = Benchmark.objects.filter(algorithm_tool__in=at)
+	
+	##json_serializer = serializers.get_serializer("json")()
+	##dump = json_serializer.serialize(list, ensure_ascii=False)
+	dump = simplejson.dumps(list)
+	
+	#dump = simplejson.dumps( benchmarks, cls=HandleQuerySets)
+	#print benchmarks
+	#dump = []
+	#for b in benchmarks:
+	#	dump.append({'model__name':b.model.name, 'states_count':b.states_count, 'total_time':b.total_time, 'memory_RSS':b.memory_RSS, 'finished':b.finished})
+	return HttpResponse(dump, mimetype='application/javascript')
+	#return JSONResponse(benchmarks)
