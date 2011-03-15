@@ -116,7 +116,7 @@ class AlgorithmTool(models.Model):
 	regex = models.ForeignKey('Regex')
 	version = models.CharField(max_length=60)
 	date = models.DateTimeField()
-	
+		
 	def __unicode__(self):
 		return "%s%s-%s" % (self.tool, self.algorithm, self.version)
 	
