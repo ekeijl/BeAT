@@ -107,6 +107,15 @@ class ValidOption(models.Model):
 	option = models.ForeignKey('Option')
 	regex = models.ForeignKey('Regex')
 	
+	def algorithm(self):
+		return self.algorithm_tool.algorithm
+
+	def tool(self):
+		return self.algorithm_tool.tool
+
+	def version(self):
+		return self.algorithm_tool.version
+
 	def __unicode__(self):
 		return "%s with option %s" % (self.algorithm_tool.tool.name, self.option.name)
 

@@ -30,6 +30,10 @@ class BenchmarkAdmin(admin.ModelAdmin):
 	]
 	inlines = [HardwareInline, OptionValueInline]
 
+class ValidOptionAdmin(admin.ModelAdmin):
+	list_display = ('tool', 'algorithm', 'version', 'option')
+	search_fields = ['algorithm_tool__algorithm__name', 'algorithm_tool__tool__name', 'algorithm_tool__version', 'option__name']
+
 class ValidOptionInline(admin.TabularInline):
 	model = ValidOption
 	extra = 1
@@ -62,6 +66,6 @@ admin.site.register(RegisteredShortcut)
 admin.site.register(ExtraValue)
 admin.site.register(AlgorithmTool, AlgorithmToolAdmin)
 
-admin.site.register(ValidOption)
+admin.site.register(ValidOption, ValidOptionAdmin)
 admin.site.register(OptionValue)
 admin.site.register(BenchmarkOptionValue)
