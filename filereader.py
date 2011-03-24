@@ -181,7 +181,7 @@ class FileReader:
 		#deduce information from the "Call: ..." line in the header
 		tmp = self.parse_call(header[call][6:], toolversion)
 		if tmp:
-			(regexes, s, optlist, modelname) = tmp
+			(regexes, tool, algo, optlist, modelname) = tmp
 		else:
 			#An error occurred, skip this log
 			return None
@@ -192,7 +192,7 @@ class FileReader:
 		dt = header[dt][10:].split(' ')
 		dt = datetime.datetime(int(dt[0]), int(dt[1]), int(dt[2]), int(dt[3]), int(dt[4]), int(dt[5]))
 		self.print_message(V_NOISY, "Notice: Header analysis complete!")
-		self.print_message(V_NOISY, "Deduced information: %s\nTool: %s\nAlgorithm: %s\nOptions: %s\nModel: %s\nTime of run start:%s"%(m, s[1], s[2], optlist,modelname,dt))
+		self.print_message(V_NOISY, "Deduced information: %s\nTool: %s\nAlgorithm: %s\nOptions: %s\nModel: %s\nTime of run start:%s"%(m, tool, algo, optlist,modelname,dt))
 		# # # # # # # # # # # # #parse the log content
 		# we apply the regular expressions found in the database.
 		m = {}
@@ -223,8 +223,8 @@ class FileReader:
 		#collect all relevant information into one dictionary
 		data = {
 			'model': modelname,
-			'tool':(s[1], toolversion),
-			'algorithm':s[2],
+			'tool':(tool, toolversion),
+			'algorithm':algo,
 			'hardware':hardware,
 			'options':optlist,
 			'benchmark':(
@@ -256,21 +256,44 @@ class FileReader:
 					a string			containing the file name of the model
 				or None, when the call cannot be parsed because the combination of tool and algorithm does not appear in the database.
 		"""
-		s = self.match_regex(r'^memtime (.*?)((?:2|-).*?)(?:$| .*$)', call)
+		
+		
+		#s = self.match_regex(r'^memtime (.*?)((?:2|-).*?)(?:$| .*$)', call)
 		#s should result in: [call, toolname, algorithmname]
-		if not s:
+		#if not s:
 			#this is a fix introduced for an alternative naming scheme, where "memtime" is not included in the Call line
-			s = self.match_regex(r'^.*?(.*?)((?:2|-).*?)(?:$| .*$)', call)
-			if not s:
+		#	s = self.match_regex(r'^.*?(.*?)((?:2|-).*?)(?:$| .*$)', call)
+			#s = self.match_regex(r'^((.*?2(?:2|-))$|^(.*?(?2|-)))(.*?)$', call)
+		#	if not s:
 				#that's bad
-				self.print_message(V_QUIET, "Error: invalid call in log: %s" %(call))
-				return None
+		#		self.print_message(V_QUIET, "Error: invalid call in log: %s" %(call))
+		#		return None
 		
 		#query the database for the regex that goes with the AlgorithmTool and then query those of the options
 		regexes=[]
 		try:
-			t = Tool.objects.get(name=s[1])
-			a = Algorithm.objects.get(name=s[2])
+			
+			at_call = call.split()[0]
+			if not at_call:
+				self.print_message(V_QUIET, "Error: invalid call in log: %s" %(call))
+				return None
+			
+			
+			at_names = [(alg.algorithm, alg.tool, alg.tool.name + alg.algorithm.name) for alg in AlgorithmTool.objects.all()]
+			
+			t = None
+			a = None
+			
+			for (algo, tool, atn) in at_names:
+				if atn == at_call:
+					print atn
+					t = tool
+					a = algo
+					
+			
+			#print "%s    %s"%(s[1], s[2])
+			#t = Tool.objects.get(name=s[1])
+			#a = Algorithm.objects.get(name=s[2])
 			at = AlgorithmTool.objects.get(tool=t, algorithm=a, version=version)
 			regexes.append(at.regex)
 			shortopts = ''
@@ -295,10 +318,10 @@ class FileReader:
 					pass
 		#handle database related errors
 		except ObjectDoesNotExist:
-			self.print_message(V_QUIET, "Error: This algorithm/tool/version combination is not known: %s%s (version %s)" %(s[1], s[2], version))
+			self.print_message(V_QUIET, "Error: This algorithm/tool/version combination is not known: %s (version %s)" %(at_call, version))
 			return None
 		except MultipleObjectsReturned:
-			self.print_message(V_SILENT, "Error: multiple parsers for %s %s (version %s). This indicates database integrity issues!" %(s[1], 1, s[2]))
+			self.print_message(V_SILENT, "Error: multiple parsers for %s (version %s). This indicates database integrity issues!" %(at_call, version))
 			return None
 		#translate all options Option->ascii, ignoring unicode-only characters, and reformat them to match what gnu_getopt expects
 		tmp = opts
@@ -336,8 +359,8 @@ class FileReader:
 		counter = 0
 		#getopt.gnu_getopt returns tuples, where the value is empty if the option is provided
 		#we need a value, however; we'll use True
-		for t in optlist:
-			o, v = t
+		for opt in optlist:
+			o, v = opt
 			if not v:	#no parameter
 				optlist[counter]=(o,True)
 
@@ -362,7 +385,7 @@ class FileReader:
 			tail = match.group(1)
 
 		#return as the docstring describes
-		return (regexes, s, optlist, tail)
+		return (regexes, t.name, a.name, optlist, tail)
 	#end of parse_call
 	
 	def check_data_validity(self, data):
@@ -623,24 +646,49 @@ class FileReader:
 			file = open(f, 'r')
 			new_run=True
 			j=0
-			lines=[]
+			last_line = ""
+			skipped_lines = {}
 			for line in file:
-				lines.append(line)
+				if line == last_line:
+					skip = skipped_lines.get(line,None)
+					if skip == None:
+						skipped_lines[line] = 1
+					else:
+						skipped_lines[line] += 1
+					continue
+
+				
 				if line.startswith("REPORT ENDS HERE"):
 					#chop here
 					j+=1
 					new_run=True
 				elif new_run:
 					#new run, so we need to do some extra stuff
-					runs_in_file.append([])
-					runs_in_file[j].append(line)
+					runs_in_file.append(([],[]))
+					runs_in_file[j][0].append(line)
+					runs_in_file[j][1].append(line)
 					new_run=False
 				else:
 					#just another line of run j.
-					runs_in_file[j].append(line)
+					if line == last_line:
+						skip = skipped_lines.get(line,None)
+						if skip == None:
+							skipped_lines[line] = 1
+						else:
+							skipped_lines[line] += 1
+						runs_in_file[j][1].append(line)
+					else:
+						runs_in_file[j][0].append(line)
+				last_line = line
 			file.close()
+			
+			if skipped_lines:
+				self.print_message(V_NOISY, "Notice: skipped %d lines:" % (sum(skipped_lines.values())))
+				for k,v in skipped_lines.iteritems():
+					self.print_message(V_NOISY, "\t%dx:\t %s" % (v,k))
+			
 			#iterate over these runs we've read
-			for run in runs_in_file:
+			for (run, full_run) in runs_in_file:
 				#parse the whole thing
 				data = self.parse(run)
 				if data:
@@ -652,7 +700,7 @@ class FileReader:
 						(created, bench)=self.write_to_db(data)
 						if created:
 							id=bench.pk
-							log_file_path = self.write_to_log(run, "%d"%(id))
+							log_file_path = self.write_to_log(full_run, "%d"%(id))
 							bench.logfile="%s"%(log_file_path)
 							bench.save()
 						error = False
