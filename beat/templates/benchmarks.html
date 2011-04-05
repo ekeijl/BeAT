@@ -41,6 +41,7 @@
 		<form id="csvform" action="/benchmarks/export/" method="POST" enctype="multipart/form-data"> {% csrf_token %}
 			<input type="submit" id="exportcsv"  value="Export CSV" />
 			<input type="hidden" id="ids" name="ids" />
+			<input type="hidden" id="cols" name="cols" />
 		</form>
 		<!-- END BENCHMARK TABLE -->
 {% endblock %}

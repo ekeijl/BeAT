@@ -51,6 +51,24 @@ class Benchmark(models.Model):
 	finished = models.BooleanField(verbose_name="Run finished")
 	logfile = models.FilePathField(path=LOGS_PATH, blank=True, null=True)
 	
+	def options(self):
+		return "; ".join(map(str,self.optionvalue.all()))
+
+	def disk_space(self):
+		return "; ".join(map(str,self.hardware.values_list('disk_space',flat=True)))
+		
+	def memory(self):
+		return "; ".join(map(str,self.hardware.values_list('memory',flat=True)))
+
+	def kernelversion(self):
+		return "; ".join(self.hardware.values_list('kernelversion',flat=True))
+	
+	def cpu(self):
+		return "; ".join(self.hardware.values_list('cpu',flat=True))
+
+	def computername(self):
+		return "; ".join(self.hardware.values_list('computername', flat=True))
+
 	def __unicode__(self):
 		return "%s with %s on %s" % (self.model, self.algorithm_tool, self.date_time)
 	

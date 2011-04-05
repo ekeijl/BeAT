@@ -34,6 +34,8 @@ def export_benchmarks(request):
 		form =  ExportForm(request.POST) # A form bound to the POST data
 		if form.is_valid():
 			ids = json.loads(request.POST['ids'])
+			cols = json.loads(request.POST['cols'])
+			all = Benchmark._meta.get_all_field_names()
 			b = form.cleaned_data['benchmarks']
 			title = form.cleaned_data['name']
 			# Export CSV button has been clicked:
@@ -42,7 +44,7 @@ def export_benchmarks(request):
 				title = 'benchmarks'
 		
 			# Return CSV file to browser as download
-			return export_csv.export(bs, title, ['logfile'])
+			return export_csv.export(bs.select_related(), title, [], cols)
 				
 	return render_to_response('benchmarks.html', {'form': form}, context_instance=RequestContext(request))
 """

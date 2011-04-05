@@ -363,6 +363,9 @@ $(document).ready(function(){
 	$("#csvform").submit(function(){
 		var ids = JSON.stringify(checked_benchmarks);
 		$("#ids").val(ids);
+		
+		var cols = JSON.stringify(data.columns);
+		$("#cols").val(cols);
 	});
 	
 	//make filter table
@@ -377,6 +380,8 @@ $(document).ready(function(){
 	update(true);
 	
 });
+
+
 
 /**
  * Function called when a mega drop-down menu must be shown
